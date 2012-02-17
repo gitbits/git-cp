@@ -1,0 +1,130 @@
+#!/usr/bin/perl
+#
+# git-cp - a convenient only subcommand for git that does cp(1) and git-add(1)
+#
+# Copyright (c) 2012 Akinori MUSHA
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+
+use strict;
+use warnings;
+use File::Basename;
+use File::Path;
+use Getopt::Long;
+use IPC::Open3;
+use Symbol 'gensym';
+
+my($opt_v, $opt_n, $opt_f, $opt_k);
+
+main();
+
+sub usage {
+    print STDERR <<EOS;
+usage: git cp [options] <source>... <destination>
+
+    -v, --verbose         be verbose
+    -n, --dry-run         dry run
+    -f, --force           force move/rename even if target exists
+    -k                    skip move/rename errors
+EOS
+    exit 129;
+}
+
+sub main {
+    my $data   = "file.dat";
+    my $length = 24;
+    my $verbose;
+    GetOptions("v|verbose" => \$opt_v,
+               "n|dry-run" => \$opt_n,
+               "f|force"   => \$opt_f,
+               "k"         => \$opt_k) or exit 64;
+    $opt_v = 1  if $opt_n;
+
+    usage if !@ARGV;
+
+    git_cp(@ARGV);
+}
+
+sub git_cp {
+    my $git_mv_flags = '-n';
+    $git_mv_flags .= 'f' if $opt_f;
+    $git_mv_flags .= 'k' if $opt_k;
+
+    my $git_mv = open3(my $in, my $out, my $err = gensym,
+                       'git', 'mv', $git_mv_flags, @_)
+        or die $!;
+
+    my @copies = map {
+        if (/^Checking rename of '(.*)' to '(.*)'$/) {
+            [$1, $2];
+        } else {
+            ();
+        }
+    } (<$out>);
+
+    my @errors = <$err>;
+
+    waitpid $git_mv, 0;
+    if ($?) {
+        print @errors;
+        exit $?;
+    }
+
+    my $cp_flags = '-RPp';
+    $cp_flags .= 'f' if $opt_f;
+    my @files;
+
+    for my $pair (@copies) {
+        my($src, $dest) = @$pair;
+
+        next if -d $src;
+
+        mkpath dirname($dest) unless $opt_n;
+        print "Copying $src to $dest\n" if $opt_v;
+        system '/bin/cp', $cp_flags, $src, $dest unless $opt_n;
+        do { exit $? if $? && !$opt_k } unless $opt_n;
+
+        push @files, $dest;
+    }
+
+    git_add(@files) unless $opt_n;
+}
+
+sub git_add {
+    my $git_add = open3(my $in, my $out, my $err = gensym,
+                        'xargs', '-0', 'git', 'add')
+        or die $!;
+
+    for my $file (@_) {
+        print $in "$file\0";
+    }
+
+    close($in);
+
+    my @errors = <$err>;
+
+    waitpid $git_add, 0;
+    exit $? if $?;
+}
