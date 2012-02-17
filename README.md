@@ -23,7 +23,7 @@ Description
 use, to avoid extra dependency.
 
 It calls `git-mv(1)` internally to borrow its checking/parsing
-abilities.  So, if the output message format changes, `git-cp(1)` may
+abilities, so if the output message format changes `git-cp(1)` may
 stop working.
 
 License
