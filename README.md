@@ -6,7 +6,7 @@ Synopsis
 
 * git-cp - a convenient only subcommand for git that does cp(1) and git-add(1)
 
-* git-touch - git-add new empty files
+* git-touch - git-add new empty files with automatic directory creation
 
 Usage
 -----

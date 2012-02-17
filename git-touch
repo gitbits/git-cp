@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# git-touch - git-add new empty files
+# git-touch - git-add new empty files with automatic directory creation
 #
 # Copyright (c) 2012 Akinori MUSHA
 #
@@ -46,11 +46,28 @@ may_exit () {
     [ -z "$opt_k" ] && exit $exit_status
 }
 
-while getopts 'vnk' opt; do
+[ $# -gt 0 ] || usage
+
+while getopts 'vnk-:' opt; do
     case "$opt" in
         [vnk])
             eval "opt_$opt=t"
             [ "$opt" = n ] && opt_v=t
+            ;;
+        -)
+            case "$OPTARG" in
+                verbose)
+                    opt_v=t
+                    ;;
+                dry-run)
+                    opt_n=t
+                    opt_v=t
+                    ;;
+                *)
+                    echo "Illegal option --$OPTARG" >&2
+                    exit 64
+                    ;;
+            esac
             ;;
         *)
             exit 64
@@ -65,8 +82,19 @@ for file; do
         echo "Cannot create file: $file" >&2
         may_exit 1
     else
+        error="$(git add -- "$file" 2>&1)"
+        pathspec="$(expr "$error" : "fatal: pathspec '\(.*\)' did not match any files")"
+        status=$?
+        if [ -z "$pathspec" ]; then
+            printf "%s\n" "$error" >&2
+            may_exit $status
+            continue
+        fi
         [ -n "$opt_v" ] && echo "Creating $file"
-        [ -z "$opt_n" ] && touch -- "$file" && git add -- "$file" || may_exit
+        if [ -z "$opt_n" ]; then
+            mkdir -p "$(dirname "$pathspec")" &&
+            touch -- "$pathspec" && git add -- "$pathspec" || may_exit
+        fi
     fi
 done
 
