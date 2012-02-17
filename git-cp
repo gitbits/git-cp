@@ -88,7 +88,7 @@ sub git_cp {
 
     waitpid $git_mv, 0;
     if ($?) {
-        print @errors;
+        print STDERR @errors;
         exit $?;
     }
 
