@@ -73,7 +73,7 @@ sub git_cp {
     $git_mv_flags .= 'k' if $opt_k;
 
     my $git_mv = open3(my $in, my $out, my $err = gensym,
-                       'git', 'mv', $git_mv_flags, @_)
+                       'git', 'mv', $git_mv_flags, '--', @_)
         or die $!;
 
     my @copies = map {
@@ -114,7 +114,7 @@ sub git_cp {
 
 sub git_add {
     my $git_add = open3(my $in, my $out, my $err = gensym,
-                        'xargs', '-0', 'git', 'add')
+                        'xargs', '-0', 'git', 'add', '--')
         or die $!;
 
     for my $file (@_) {
