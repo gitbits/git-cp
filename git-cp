@@ -53,9 +53,6 @@ EOS
 }
 
 sub main {
-    my $data   = "file.dat";
-    my $length = 24;
-    my $verbose;
     GetOptions("v|verbose" => \$opt_v,
                "n|dry-run" => \$opt_n,
                "f|force"   => \$opt_f,
