@@ -1,0 +1,105 @@
+#!/bin/sh
+#
+# git-untouch - undo git-touch
+#
+# Copyright (c) 2012 Akinori MUSHA
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+
+usage () {
+    cat <<EOS >&2
+usage: git untouch <filename>...
+
+    -v, --verbose         be verbose
+    -n, --dry-run         dry run
+    -k                    skip any error
+EOS
+    exit 129
+}
+
+exit_status=
+
+may_exit () {
+    exit_status=${1:-$?}
+    [ -z "$opt_k" ] && exit $exit_status
+}
+
+[ $# -gt 0 ] || usage
+
+while getopts 'vnk-:' opt; do
+    case "$opt" in
+        [vnk])
+            eval "opt_$opt=t"
+            [ "$opt" = n ] && opt_v=t
+            ;;
+        -)
+            case "$OPTARG" in
+                verbose)
+                    opt_v=t
+                    ;;
+                dry-run)
+                    opt_n=t
+                    opt_v=t
+                    ;;
+                *)
+                    echo "Illegal option --$OPTARG" >&2
+                    exit 64
+                    ;;
+            esac
+            ;;
+        *)
+            exit 64
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+for file; do
+    if [ -L "$file" -o ! -f "$file" ]; then
+        echo "Not a regular file: $file" >&2
+        may_exit 1
+    elif [ -s "$file" ]; then
+        echo "Not an empty file: $file" >&2
+        may_exit 1
+    else
+        case "$(git status --short -- "$file" 2>/dev/null)" in
+            "A  "*)
+                [ -n "$opt_v" ] && echo "Removing $file"
+                if [ -z "$opt_n" ]; then
+                    git reset HEAD -- "$file" >/dev/null
+                    rm -- "$file" || may_exit "$?"
+                    rmdir -p "$(cd "$(dirname "$file")" && pwd -P)" 2>/dev/null || :
+                fi
+                ;;
+            *)
+                echo "Not a new file or index not empty: $file" >&2
+                may_exit 1
+                ;;
+        esac
+    fi
+done
+
+exit $exit_status

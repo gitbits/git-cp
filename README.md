@@ -8,6 +8,8 @@ Synopsis
 
 * git-touch - git-add new empty files with automatic directory creation
 
+* git-untouch - undo git-touch
+
 Usage
 -----
 
@@ -24,6 +26,12 @@ Usage
         -n, --dry-run         dry run
         -k                    skip create errors
 
+    git untouch <filename>...
+
+        -v, --verbose         be verbose
+        -n, --dry-run         dry run
+        -k                    skip any error
+
 Description
 -----------
 
@@ -35,7 +43,8 @@ abilities, so if the output message format changes `git-cp(1)` may
 stop working.
 
 `git-touch(1)` provides a convenient way to create one or more empty
-files and stage them.
+files and get them staged, and `git-untouch(1)` undoes what
+`git-touch(1)` has done.
 
 License
 -------
