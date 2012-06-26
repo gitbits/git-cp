@@ -30,6 +30,7 @@
 
 use strict;
 use warnings;
+use Cwd;
 use File::Basename;
 use File::Path;
 use Getopt::Long;
@@ -73,6 +74,16 @@ sub may_exit {
     $exit_status = $status;
 }
 
+sub git_top(&) {
+    my($code) = @_;
+    my $cwd = getcwd();
+    chomp(my $top = `git rev-parse --show-toplevel`);
+    chdir $top or die $!;
+    eval $code->();
+    chdir $cwd or die $!;
+    die $@ if $@;
+}
+
 sub git_cp {
     my $git_mv_flags = '-n';
     $git_mv_flags .= 'f' if $opt_f;
@@ -109,13 +120,19 @@ sub git_cp {
 
         mkpath dirname($dest) unless $opt_n;
         print "Copying $src to $dest\n" if $opt_v;
-        system '/bin/cp', $cp_flags, $src, $dest unless $opt_n;
-        do { may_exit if $? } unless $opt_n;
+        unless ($opt_n) {
+            git_top {
+                system '/bin/cp', $cp_flags, $src, $dest;
+            };
+            may_exit if $?;
+        }
 
         push @files, $dest;
     }
 
-    git_add(@files) unless $opt_n;
+    git_top {
+        git_add(@files);
+    } unless $opt_n;
 }
 
 sub git_add {
