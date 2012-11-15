@@ -77,6 +77,15 @@ done
 
 shift $((OPTIND - 1))
 
+top="$(git rev-parse --show-toplevel)"
+status=$?
+
+if [ -z "$top" ]; then
+    exit $status
+fi
+
+cwd="$(pwd)"
+
 for file; do
     if [ -e "$file" ]; then
         echo "Cannot create file: $file" >&2
@@ -92,8 +101,10 @@ for file; do
         fi
         [ -n "$opt_v" ] && echo "Creating $file"
         if [ -z "$opt_n" ]; then
+            cd "$top" || exit
             mkdir -p "$(dirname "$pathspec")" &&
             touch -- "$pathspec" && git add -- "$pathspec" || may_exit
+            cd "$cwd" || exit
         fi
     fi
 done
