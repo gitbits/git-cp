@@ -69,7 +69,7 @@ sub main {
 }
 
 sub may_exit {
-    my($status) = @_ ? @_ : ($?);
+    my($status) = @_ ? @_ : ($? >> 8);
     exit $status unless $opt_k;
     $exit_status = $status;
 }
@@ -106,7 +106,7 @@ sub git_cp {
     waitpid $git_mv, 0;
     if ($?) {
         print STDERR @errors;
-        exit $?;
+        exit($? >> 8);
     }
 
     my $cp_flags = '-RPp';
@@ -151,5 +151,5 @@ sub git_add {
     my @errors = <$err>;
 
     waitpid $git_add, 0;
-    exit $? if $?;
+    exit($? >> 8) if $?;
 }
