@@ -2,7 +2,7 @@
 #
 # git-touch - git-add new empty files with automatic directory creation
 #
-# Copyright (c) 2012, 2014 Akinori MUSHA
+# Copyright (c) 2012-2015 Akinori MUSHA
 #
 # All rights reserved.
 #
@@ -85,9 +85,13 @@ if [ -z "$top" ]; then
 fi
 
 for file; do
-    if [ -e "$file" ]; then
-        echo "Cannot create file: $file" >&2
+    if [ -L "$file" -o '(' -e "$file" -a ! -f "$file" ')' ]; then
+        echo "Not a regular file: $file" >&2
         may_exit 1
+    elif [ -f "$file" ]; then
+        if [ -z "$(git ls-files -- "$file" 2>&1)" ]; then
+            git add -N -- "$file"
+        fi
     else
         error="$(git add -- "$file" 2>&1)"
         pathspec="$(expr "$error" : "fatal: pathspec '\(.*\)' did not match any files")"

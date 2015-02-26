@@ -2,7 +2,7 @@
 #
 # git-untouch - undo git-touch
 #
-# Copyright (c) 2012 Akinori MUSHA
+# Copyright (c) 2012-2015 Akinori MUSHA
 #
 # All rights reserved.
 #
@@ -81,24 +81,22 @@ for file; do
     if [ -L "$file" -o ! -f "$file" ]; then
         echo "Not a regular file: $file" >&2
         may_exit 1
-    elif [ -s "$file" ]; then
-        echo "Not an empty file: $file" >&2
+    elif ! git status --porcelain -- "$file" 2>/dev/null | grep -q '^A'; then
+        echo "Not a new file: $file" >&2
         may_exit 1
+    elif [ $(git show :"$file" | wc -c) -gt 0 ]; then
+        echo "Index not empty: $file" >&2
+        may_exit 1
+    elif [ -s "$file" ]; then
+        [ -z "$opt_v" ] || echo "Unstaging $file"
+        [ -z "$opt_n" ] || continue
+        git reset -- "$file" >/dev/null
     else
-        case "$(git status --short -- "$file" 2>/dev/null)" in
-            "A  "*)
-                [ -n "$opt_v" ] && echo "Removing $file"
-                if [ -z "$opt_n" ]; then
-                    git reset HEAD -- "$file" >/dev/null
-                    rm -- "$file" || may_exit "$?"
-                    rmdir -p "$(cd "$(dirname "$file")" && pwd -P)" 2>/dev/null || :
-                fi
-                ;;
-            *)
-                echo "Not a new file or index not empty: $file" >&2
-                may_exit 1
-                ;;
-        esac
+        [ -z "$opt_v" ] || echo "Removing $file"
+        [ -z "$opt_n" ] || continue
+        git reset -- "$file" >/dev/null
+        rm -- "$file" || may_exit "$?"
+        rmdir -p "$(cd "$(dirname "$file")" && pwd -P)" 2>/dev/null || :
     fi
 done
 

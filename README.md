@@ -43,8 +43,10 @@ abilities, so if the output message format changes `git-cp(1)` may
 stop working.
 
 `git-touch(1)` provides a convenient way to create one or more empty
-files and get them staged, and `git-untouch(1)` undoes what
-`git-touch(1)` has done.
+files and get them staged.  If a specified file already exists, it
+just adds the path to the index using `git add -N file`.
+
+`git-untouch(1)` undoes what `git-touch(1)` has done.
 
 License
 -------
