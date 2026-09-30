@@ -10,6 +10,18 @@ Synopsis
 
 * git-untouch - undo git-touch
 
+Installation
+------------
+
+Install with [mise](https://mise.jdx.dev/):
+
+```sh
+mise use -g github:gitbits/git-cp@latest
+```
+
+This provides `git cp`, `git touch`, and `git untouch`.
+Git and a POSIX shell are required; `git-cp` also uses `/usr/bin/perl`.
+
 Usage
 -----
 
